@@ -92,6 +92,15 @@ async def finish_request():
     await dao.finish_request(request_id)
     return redirect(url_for('index'))
 
+@app.route('/restore_status', methods=['GET', 'POST'])
+async def restore_status():
+    dao_factory = current_app.config.get('dao_factory')
+    dao = dao_factory.create_dao()
+    a = await request.form
+    request_id = int(a['request_id'])
+    await dao.restore_status(request_id)
+    return redirect(url_for('index'))
+
 @app.route('/get_tutorrequestlist')
 async def get_tutorrequestlist():
     dao_factory = current_app.config.get('dao_factory')

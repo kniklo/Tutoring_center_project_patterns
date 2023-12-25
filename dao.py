@@ -1,5 +1,9 @@
+import datetime
+import time
+
 import aiomysql
 from observers import Observer, RequestObserver, ObserverSubject, ConcreteObserverSubject
+from hranitel import Memento, Caretaker
 
 
 # Класс Singleton для подключения к базе данных
@@ -36,8 +40,14 @@ class DAOFactory:
 
 # Конкретная фабрика для создания объектов доступа к данным MySQL
 class MySQLDAOFactory(DAOFactory):
+
+    def __init__(self):
+        self.dao = None
+
     def create_dao(self):
-        return DAO()
+        if not self.dao:
+            self.dao = DAO()
+        return self.dao
 
 
 class DAO:
@@ -46,6 +56,16 @@ class DAO:
         self.concrete_os = ConcreteObserverSubject()
         self.observer1 = RequestObserver('Observer 1')
         self.concrete_os.add_observer(self.observer1)
+        self.caretaker = Caretaker()
+
+    def save_state_to_memento(self, status):
+        return Memento(status)
+
+    def restore_state_from_memento(self, memento):
+        if memento:
+            return memento.get_state()
+        else:
+            return None
 
     @staticmethod
     async def connect_to_database():
@@ -56,14 +76,26 @@ class DAO:
             db="tutor")
         return connection
 
+    async def checktime(self, cursor, *args):
+        if datetime.datetime.now().hour >= 19:
+            return None
+        else:
+            await cursor.execute(*args)
+            return cursor
+
+
     async def get_repetitors(self):
         connection = await self.connect_to_database()
         cursor = await connection.cursor()
         sql = "SELECT user.name FROM repetitor JOIN user ON repetitor.user_id = user.id"
         values = []
-        await cursor.execute(sql, values)
-        repetitors = await cursor.fetchall()
-        await cursor.close()
+        cursor = await self.checktime(cursor, sql, values)
+        if cursor:
+        # await cursor.execute(sql, values)
+            repetitors = await cursor.fetchall()
+            await cursor.close()
+        else:
+            repetitors = ['Запрет на работу с БД']
         connection.close()
         return repetitors
 
@@ -98,6 +130,7 @@ class DAO:
         await cursor.close()
         connection.close()
         self.concrete_os.set_status(user, 1)
+        self.caretaker.add_memento(request_id, self.save_state_to_memento(0))
 
     async def confirm_request(self, user_id, request_id):
         connection = await self.connect_to_database()
@@ -113,6 +146,7 @@ class DAO:
         await cursor.close()
         connection.close()
         self.concrete_os.set_status(user, 2)
+        self.caretaker.add_memento(request_id, self.save_state_to_memento(1))
 
     async def finish_request(self, request_id):
         connection = await self.connect_to_database()
@@ -123,6 +157,20 @@ class DAO:
         await connection.commit()
         await cursor.close()
         connection.close()
+        self.caretaker.add_memento(request_id, self.save_state_to_memento(2))
+
+    async def restore_status(self, request_id):
+        status = self.restore_state_from_memento(self.caretaker.get_memento(request_id))
+        print(status)
+        if status:
+            connection = await self.connect_to_database()
+            cursor = await connection.cursor()
+            sql = "UPDATE request SET status_id = %s, time = NOW() WHERE id = %s"
+            values = [status, request_id]
+            await cursor.execute(sql, values)
+            await connection.commit()
+            await cursor.close()
+            connection.close()
 
     async def get_tutorrequestlist(self, status_id, user_id):
         connection = await self.connect_to_database()

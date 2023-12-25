@@ -76,6 +76,21 @@ async function finishRequest(request_id)	{
 	});
 }
 
+async function restoreStatus(request_id)	{
+	$.ajax({
+		url: '/restore_status',
+		method: 'POST',
+		data: {'request_id': request_id},
+		success: function(response) {
+			window.location.href = '/';
+		},
+		error: function(xhr, status, error) {
+			console.log('Ошибка:', error);
+		}
+	});
+}
+
+
 function requestclientList() {
 	var selectedRequestId = null;
 	var modeNewRequest = false;
@@ -131,6 +146,7 @@ function requestclientList() {
 			htmlrequestDetail += requestDetails[1] + '<br>';
 			htmlrequestDetail += requestDetails[2] + '<br>';
 			htmlrequestDetail += '</h1></center>';
+			htmlrequestDetail += '<h3><center><button class="transparent-button" onclick="restoreStatus(' + requestId + ')"><img src="static/images/orange_circle.png" width="50" height="50">Восстановить статус заявки</button></h3></center>'
 		}		
         $('#requestOne').html(htmlrequestDetail);
       }
@@ -230,6 +246,7 @@ function requesttutorList() {
 			htmlrequestDetail += requestDetails[1] + '<br>';
 			htmlrequestDetail += requestDetails[2] + '<br>';
 			htmlrequestDetail += '</h1></center>';
+			htmlrequestDetail += '<h3><center><button class="transparent-button" onclick="restoreStatus(' + requestId + ')"><img src="static/images/orange_circle.png" width="50" height="50">Восстановить статус заявки</button></h3></center>'
 		}		
         $('#requestOne').html(htmlrequestDetail);
       }
