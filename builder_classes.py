@@ -31,8 +31,9 @@ class Repetitor(User):
 
 
 # Класс Builder для создания объектов Repetitor
-class RepetitorBuilder:
+class RepetitorBuilder(UserBuilder):
     def __init__(self, login: str, password: str):
+        super().__init__(login, password)
         self.repetitor = Repetitor(login, password)
 
     def set_indeal(self, indeal: int):
